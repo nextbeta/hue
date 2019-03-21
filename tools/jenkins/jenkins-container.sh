@@ -28,6 +28,8 @@ docker run -it -v $HUE_SRC:/hue -v $HUE_BLD:/opt $BASEDOCKER bash -c "cd /opt/hu
 #docker run -it -v $HUE_SRC:/hue -v $HUE_BLD:/hue_build $BASEDOCKER bash -c "./build/env/bin/pip install psycopg2-binary"
 
 cd $WEBAPP_DIR
+mkdir -p hue-conf 
+cp -a $HUE_SRC/desktop/conf.dist/* hue-conf
 GBN=$(curl http://gbn.infra.cloudera.com/)
 WEBAPPIMAGE="webapp:$GBN"
 docker tag $DOCKER_REGISTRY/$BASEIMAGE $BASEIMAGE
