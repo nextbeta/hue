@@ -25,6 +25,7 @@ import hueUtils from 'utils/hueUtils';
 
 const AUTOCOMPLETE_API_PREFIX = '/notebook/api/autocomplete/';
 const SAMPLE_API_PREFIX = '/notebook/api/sample/';
+const EXECUTE_API_PREFIX = '/notebook/api/execute/';
 const DOCUMENTS_API = '/desktop/api2/doc/';
 const DOCUMENTS_SEARCH_API = '/desktop/api2/docs/';
 const FETCH_CONFIG = '/desktop/api2/get_config/';
@@ -1796,6 +1797,45 @@ class ApiHelper {
     };
 
     waitForAvailable();
+    return new CancellablePromise(deferred, undefined, cancellablePromises);
+  }
+
+  /**
+   * Fetches samples for the given source and path
+   *
+   * @param {Object} options
+   * @param {boolean} [options.silenceErrors]
+   *
+   * @param {ExecutableStatement} options.executable
+   * @param {ContextCompute} options.compute
+   *
+   * @return {CancellablePromise}
+   */
+  execute(options) {
+    const url = EXECUTE_API_PREFIX + options.sourceType;
+    const deferred = $.Deferred();
+    const executable = options.executable;
+
+    self.simplePost(url, {
+      compute: executable.compute,
+      statement: executable.statement,
+      database: executable.database
+    }, options).done(deferred.resolve).fail(deferred.reject);
+
+    const cancellablePromises = [{
+      cancel: () => {
+        deferred.done(data => {
+          self.simplePost(
+            '/notebook/api/cancel_statement',
+            {
+
+            },
+            { silenceErrors: options.silenceErrors }
+          );
+        })
+      }
+    }];
+
     return new CancellablePromise(deferred, undefined, cancellablePromises);
   }
 
