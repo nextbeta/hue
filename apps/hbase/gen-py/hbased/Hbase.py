@@ -47,7 +47,7 @@ def do_as(func):
 
         trans_client.setCustomHeaders({'doAs': username})
 
-    except AttributeError, e:
+    except AttributeError as e:
       LOG.error('Could not set doAs parameter: %s' % smart_str(e))
 
     return func(*args, **kwargs)

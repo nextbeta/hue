@@ -189,7 +189,7 @@ class HueApp(object):
           if not os.path.exists(cur):
             os.unlink(link_name)
             LOG.warn("Removing broken link: %s" % (link_name,))
-        except OSError, ex:
+        except OSError as ex:
           LOG.warn("Error checking for existing link %s: %s" % (link_name, ex))
 
       # Actually install the link
@@ -197,12 +197,12 @@ class HueApp(object):
         os.symlink(target, link_name)
         LOG.info('Symlink config %s -> %s' % (link_name, target))
         installed.append(link_name)
-      except OSError, ex:
+      except OSError as ex:
         LOG.error("Failed to symlink %s to %s: %s" % (target, link_name, ex))
         for lnk in installed:
           try:
             os.unlink(lnk)
-          except OSError, ex2:
+          except OSError as ex2:
             LOG.error("Failed to cleanup link %s: %s" % (link_name, ex2))
         return False
     return True
@@ -225,7 +225,7 @@ class HueApp(object):
         try:
           os.unlink(path)
           LOG.info('Remove config symlink %s -> %s' % (path, target))
-        except OSError, ex:
+        except OSError as ex:
           LOG.error("Failed to remove configuration link %s: %s" % (path, ex))
           return False
     return True

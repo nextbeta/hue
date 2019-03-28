@@ -74,7 +74,7 @@ def model_to_dict(model):
         dictionary[field.name] = str(attr)
       else:
         dictionary[field.name] = attr
-    except Exception, e:
+    except Exception as e:
       LOG.debug(_("Could not set field %(field)s: %(exception)s") % {'field': field.name, 'exception': str(e)})
   return dictionary
 

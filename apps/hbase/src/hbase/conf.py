@@ -87,7 +87,7 @@ def config_validator(user):
       # Check connectivity
       api.connectCluster(cluster_name)
       api.getTableList(cluster_name)
-  except Exception, e:
+  except Exception as e:
     print e
     if 'Could not connect' in str(e):
       msg = "The application won't work without a running HBase Thrift Server v1."

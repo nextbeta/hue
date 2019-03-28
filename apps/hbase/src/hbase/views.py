@@ -139,7 +139,7 @@ def install_examples(request):
     try:
       hbase_setup.Command().handle(user=request.user)
       result['status'] = 0
-    except Exception, e:
+    except Exception as e:
       LOG.exception(e)
       result['message'] = str(e)
 

@@ -220,7 +220,7 @@ class Job(models.Model):
   def can_read(self, user):
     try:
       return self.doc.get().can_read(user)
-    except Exception, e:
+    except Exception as e:
       LOG.error('can_read failed because the object has more than one document: %s' % self.doc.all())
       raise e
 
@@ -410,7 +410,7 @@ class Workflow(Job):
       else:
         perms = 0711
       fs.copy_remote_dir(source_deployment_dir, copy.deployment_dir, owner=copy.owner, dir_mode=perms)
-    except WebHdfsException, e:
+    except WebHdfsException as e:
       msg = _('The copy of the deployment directory failed: %s.') % e
       LOG.error(msg)
       raise PopupException(msg)
@@ -561,7 +561,7 @@ class Workflow(Job):
         node_list = workflow.node_list
         workflow.delete(skip_trash=True)
         return graph, node_list
-    except Exception, e:
+    except Exception as e:
       LOG.warn('Workflow %s could not be converted to a graph: %s' % (oozie_workflow.id, e))
 
     return None, []

@@ -110,7 +110,7 @@ def _do_install_one(reg, app_loc, relative_path):
     # Relative to cwd.
     app_loc = os.path.realpath(app_loc)
     app_name, version, desc, author = get_app_info(app_loc)
-  except (ValueError, OSError), ex:
+  except (ValueError, OSError) as ex:
     LOG.error(ex)
     return False
 
@@ -168,7 +168,7 @@ def do_remove(app_name):
     pthfile.remove(app)
     pthfile.save()
     return True
-  except (OSError, SystemError), ex:
+  except (OSError, SystemError) as ex:
     LOG.error("Failed to update the .pth file. Please fix any problem and run "
               "`%s --sync'\n%s" % (PROG_NAME, ex))
     return False
@@ -187,7 +187,7 @@ def do_sync(reg=None):
 
     build.make_syncdb()
     return True
-  except (OSError, SystemError), ex:
+  except (OSError, SystemError) as ex:
     LOG.error("Failed to update the .pth file. Please fix any problem and run "
               "`%s --sync'\n%s" % (PROG_NAME, ex))
     return False
@@ -198,7 +198,7 @@ def do_collectstatic():
   try:
     build.make_collectstatic()
     return True
-  except (OSError, SystemError), ex:
+  except (OSError, SystemError) as ex:
     LOG.error("Failed to collect the static files. Please fix any problem and run "
               "`%s --collectstatic'\n%s" % (PROG_NAME, ex))
     return False
@@ -213,7 +213,7 @@ def main():
     opts, tail = getopt.getopt(sys.argv[1:],
                                'ir:lds',
                                ('install', 'remove=', 'list', 'debug', 'sync'))
-  except getopt.GetoptError, ex:
+  except getopt.GetoptError as ex:
     usage(str(ex))
 
   def verify_action(current, new_val):

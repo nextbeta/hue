@@ -46,7 +46,7 @@ class HbaseApi(object):
         return getattr(self, action)(*args)
       cluster = args[0]
       return self.queryCluster(action, cluster, *args[1:])
-    except Exception, e:
+    except Exception as e:
       if 'Could not connect to' in e.message:
         raise PopupException(_("HBase Thrift 1 server cannot be contacted: %s") % e.message)
       else:
@@ -158,7 +158,7 @@ class HbaseApi(object):
       scan = get_thrift_type('TScan')(startRow=query, stopRow=None, timestamp=None, columns=[], caching=None, filterString="PrefixFilter('" + query + "') AND ColumnPaginationFilter(1,0)", batchSize=None)
       scanner = client.scannerOpenWithScan(tableName, scan, None, doas=self.user.username)
       return [result.row for result in client.scannerGetList(scanner, numRows, doas=self.user.username)]
-    except Exception, e:
+    except Exception as e:
       LOG.error('Autocomplete error: %s' % smart_str(e))
       return []
 
