@@ -1818,7 +1818,8 @@ class ApiHelper {
 
     self.simplePost(url, {
       compute: executable.compute,
-      statement: executable.statement,
+      namespace: executable.namespace,
+      statement: executable.getStatement(),
       database: executable.database
     }, options).done(deferred.resolve).fail(deferred.reject);
 

@@ -18,29 +18,41 @@ import CancellablePromise from 'api/cancellablePromise';
 import { STATUS, ExecutableStatement } from './executableStatement';
 import sqlStatementsParser from 'parse/sqlStatementsParser';
 
+const EXECUTION_FLOW = {
+  step: 'step',
+  batch: 'batch',
+  // batchNoBreak: 'batchNoBreak'
+};
+
+const BATCHABLE_STATEMENT_TYPES = /ALTER|CREATE|DELETE|DROP|GRANT|INSERT|INVALIDATE|LOAD|SET|TRUNCATE|UPDATE|UPSERT|USE/i;
+
 class Executor {
-  constructor() {
-    this.lastExecutables = [];
-    this.status = STATUS.ready;
-  }
 
   /**
    * @param options
+   * @param {boolean} [options.isSqlEngine] (default false)
    * @param {string} options.sourceType
    * @param {ContextCompute} options.compute
    * @param {ContextNamespace} options.namespace
+   * @param {EXECUTION_FLOW} [options.executionFlow] (default EXECUTION_FLOW.batch)
    * @param {string} options.statement
    * @param {string} [options.database]
    */
-  executeStatements(options) {
-    this.status = STATUS.running;
+  constructor(options) {
+    this.sourceType = options.sourceType;
+    this.compute = options.compute;
+    this.namespace = options.namespace;
+    this.database = options.database;
+    this.isSqlEngine = options.isSqlEngine;
+    this.executionFlow = this.isSqlEngine ? options.executionFlow || EXECUTION_FLOW.batch : EXECUTION_FLOW.step;
 
-    const executables = [];
-    const deferred = $.Deferred();
+    this.toExecute = [];
+    this.currentExecutable = undefined;
+    this.executed = [];
 
-    if (options.isSqlDialect) {
+    if (this.isSqlEngine) {
       let database = options.database;
-      sqlStatementsParser.parse(options.statements).forEach(parsedStatement => {
+      sqlStatementsParser.parse(options.statement).forEach(parsedStatement => {
         // If there's no first token it's a trailing comment
         if (parsedStatement.firstToken) {
 
@@ -51,7 +63,7 @@ class Executor {
               database = dbMatch[1];
             }
           } else {
-            executables.push(new ExecutableStatement({
+            this.toExecute.push(new ExecutableStatement({
               sourceType: options.sourceType,
               compute: options.compute,
               namespace: options.namespace,
@@ -62,41 +74,54 @@ class Executor {
         }
       });
     } else {
-      executables.push(new ExecutableStatement(options));
+      this.toExecute.push(new ExecutableStatement(options));
     }
 
-    this.lastExecutables = executables.concat(); // Clone
+    this.status = STATUS.ready;
+  }
 
-    const cancellablePromises = [{
-      cancel: () => {
-        const running = executables.filter(executable => executable.status === STATUS.running);
-        if (running.length) {
-          this.status = STATUS.canceling;
-          const cancelPromises = running.map(executable => executable.cancel());
-          return $.when(cancelPromises).then(() => {
-            this.status = STATUS.canceled;
-          });
+  async cancel() {
+    if (this.currentExecutable && this.currentExecutable.status === STATUS.running) {
+      this.status = STATUS.canceling;
+      return await this.currentExecutable.cancel();
+    }
+  }
+
+  async executeNext() {
+    return new Promise((resolve, reject) => {
+      if (this.currentExecutable) {
+        if (this.currentExecutable.status === STATUS.running) {
+          reject();
         }
-        return $.Deferred().resolve().promise();
+        if (this.currentExecutable.status === STATUS.success) {
+          this.executed.push(this.currentExecutable);
+          this.currentExecutable = undefined;
+        }
       }
-    }];
 
-    const executeNext = () => {
-      if (this.status === STATUS.running) {
-        if (executables.length) {
-          executables.shift().execute().then(executeNext).catch(errorMessage => {
-            this.status = STATUS.failed;
-          })
+      if (!this.currentExecutable) {
+        if (this.toExecute.length === 0) {
+          resolve();
         } else {
-          this.status = STATUS.success;
-          deferred.resolve();
+          this.currentExecutable = this.toExecute.shift();
         }
       }
-    };
 
-    executeNext();
+      if (this.currentExecutable) {
+        this.status = STATUS.running;
+        this.currentExecutable.execute().then(() => {
+          if (this.canExecuteNextInBatch()) {
+            this.executeNext().then(resolve).catch(reject);
+          } else {
+            // this.status = STATUS.paused
+          }
+        })
+      }
+    })
+  }
 
-    return new CancellablePromise(deferred, undefined, cancellablePromises);
+  canExecuteNextInBatch() {
+    return this.isSqlEngine && this.executionFlow !== EXECUTION_FLOW.step && this.currentExecutable && this.currentExecutable.parsedStatement && BATCHABLE_STATEMENT_TYPES.test(this.currentExecutable.parsedStatement.firstToken)
   }
 }
 

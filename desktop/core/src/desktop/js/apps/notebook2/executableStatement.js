@@ -33,7 +33,8 @@ class ExecutableStatement {
    * @param {string} options.sourceType
    * @param {ContextCompute} options.compute
    * @param {ContextNamespace} options.namespace
-   * @param {string} options.statement
+   * @param {string} [options.statement] - Either supply a statement or a parsedStatement
+   * @param {SqlStatementsParserResult} [options.parsedStatement] - Either supply a statement or a parsedStatement
    * @param {string} [options.database]
    */
   constructor(options) {
@@ -41,40 +42,47 @@ class ExecutableStatement {
     this.database = options.database;
     this.namespace = options.namespace;
     this.sourceType = options.sourceType;
+    this.parsedStatement = options.parsedStatement;
     this.statement = options.statement;
 
     this.lastCancellable = undefined;
     this.status = STATUS.ready;
   }
 
-  execute() {
+  getStatement() {
+    return this.statement || this.parsedStatement.statement;
+  }
+
+  async execute() {
     if (this.status === STATUS.running) {
       return;
     }
+    hueAnalytics.log('notebook', 'execute/' + this.sourceType);
     this.status = STATUS.running;
 
-    hueAnalytics.log('notebook', 'execute/' + this.sourceType);
-
-    const cancellable = apiHelper.execute({
+    return await apiHelper.execute({
       executable: this
     }).done(response => {
       console.log(response);
     }).fail(error => {
       this.status = STATUS.failed;
     });
-
-    return cancellable;
   }
 
   cancel() {
-    if (this.lastCancellable && this.status === STATUS.running) {
-      hueAnalytics.log('notebook', 'cancel/' + this.sourceType);
-      this.status = STATUS.canceling;
-      this.lastCancellable.cancel().always(() => {
-        this.status = STATUS.canceled;
-      });
-      this.lastCancellable = undefined;
-    }
+    return new Promise((resolve) => {
+      if (this.lastCancellable && this.status === STATUS.running) {
+        hueAnalytics.log('notebook', 'cancel/' + this.sourceType);
+        this.status = STATUS.canceling;
+        this.lastCancellable.cancel().always(() => {
+          this.status = STATUS.canceled;
+          resolve();
+        });
+        this.lastCancellable = undefined;
+      } else {
+        resolve();
+      }
+    })
   }
 }
 
