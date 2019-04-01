@@ -20,6 +20,8 @@ import hueAnalytics from "utils/hueAnalytics";
 const STATUS = {
   canceled: 'canceled',
   canceling: 'canceling',
+  executed: 'executed',
+  fetchingResults: 'fetchingResults',
   ready: 'ready',
   running: 'running',
   success: 'success',
@@ -44,6 +46,9 @@ class ExecutableStatement {
     this.sourceType = options.sourceType;
     this.parsedStatement = options.parsedStatement;
     this.statement = options.statement;
+    this.handle = {
+      statement_id: 0 // TODO: Get rid of need for initial handle in the backend
+    };
 
     this.lastCancellable = undefined;
     this.status = STATUS.ready;
@@ -60,18 +65,21 @@ class ExecutableStatement {
     hueAnalytics.log('notebook', 'execute/' + this.sourceType);
     this.status = STATUS.running;
 
-    return await apiHelper.execute({
+    this.lastCancellable = apiHelper.execute({
       executable: this
-    }).done(response => {
-      console.log(response);
+    }).done(handle => {
+      this.handle = handle;
+      this.status = STATUS.fetchingResults;
     }).fail(error => {
       this.status = STATUS.failed;
     });
+
+    return this.lastCancellable;
   }
 
-  cancel() {
+  async cancel() {
     return new Promise((resolve) => {
-      if (this.lastCancellable && this.status === STATUS.running) {
+      if (this.lastCancellable && this.status === STATUS.fetchingResults) {
         hueAnalytics.log('notebook', 'cancel/' + this.sourceType);
         this.status = STATUS.canceling;
         this.lastCancellable.cancel().always(() => {
